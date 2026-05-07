@@ -44,7 +44,11 @@ const StudentModal: React.FC<StudentModalProps> = ({ isOpen, onClose, onSubmit, 
     const field = e.target.name as keyof FormDataType;
     const value = e.target.value;
     setFormData((prev) => ({ ...prev, [field]: value }));
-    setErrors((prev) => ({ ...prev, [field]: undefined }));
+    setErrors((prev) => {
+  const newErrors = { ...prev };
+  delete newErrors[field];
+  return newErrors;
+});
   };
 
   const validate = (): boolean => {
@@ -71,18 +75,18 @@ const StudentModal: React.FC<StudentModalProps> = ({ isOpen, onClose, onSubmit, 
   };
 
   useEffect(() => {
-    const handleEsc = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') {
-        onClose();
-      }
-    };
-    if (isOpen) {
-      document.addEventListener('keydown', handleEsc);
-      return () => {
-        document.removeEventListener('keydown', handleEsc);
-      };
+  const handleEsc = (event: KeyboardEvent) => {
+    if (event.key === 'Escape') {
+      onClose();
     }
-  }, [isOpen, onClose]);
+  };
+  if (isOpen) {
+    document.addEventListener('keydown', handleEsc);
+  }
+  return () => {
+    document.removeEventListener('keydown', handleEsc);
+  };
+}, [isOpen, onClose]);
 
   if (!isOpen) return null;
 

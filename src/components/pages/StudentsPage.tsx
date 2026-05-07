@@ -1,157 +1,174 @@
-import React, { useState, useEffect } from 'react';
-import { getFirestore, collection, onSnapshot, addDoc, updateDoc, deleteDoc, doc } from 'firebase/firestore';
-import { initializeApp, getApps } from 'firebase/app';
-
-const firebaseConfig = {
-  apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
-  authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN,
-  projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID,
-  storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET,
-  messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID,
-  appId: import.meta.env.VITE_FIREBASE_APP_ID,
-};
-
-// Initialize Firebase
-if (!getApps().length) {
-  initializeApp(firebaseConfig);
-}
-
-const db = getFirestore();
+import React, { useState, useEffect, FormEvent } from 'react';
+import { collection, onSnapshot, deleteDoc, doc, addDoc, updateDoc } from 'firebase/firestore';
+import { db } from '@/lib/firebase';
+import { useStudentFilter } from '@/hooks/useStudentFilter';
+import StudentFilter from '@/components/StudentFilter';
 
 interface Student {
   id: string;
   name: string;
   email: string;
-  nota: number;
+  age: number;
+}
+
+type SortBy = 'name' | 'email' | 'age';
+type Direction = 'asc' | 'desc';
+
+interface Filters {
+  search: string;
+  sortBy: SortBy;
+  direction: Direction;
+}
+
+interface FormData {
+  name: string;
+  email: string;
+  age: number;
 }
 
 const StudentsPage: React.FC = () => {
   const [students, setStudents] = useState<Student[]>([]);
-  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [filters, setFilters] = useState<Filters>({
+    search: '',
+    sortBy: 'name',
+    direction: 'asc'
+  });
+  const [showModal, setShowModal] = useState(false);
   const [editingStudent, setEditingStudent] = useState<Student | null>(null);
-  const [formData, setFormData] = useState({ name: '', email: '', nota: 0 });
+  const [formData, setFormData] = useState<FormData>({ name: '', email: '', age: 0 });
+
+  const { filteredStudents } = useStudentFilter(students, filters);
 
   useEffect(() => {
-    const unsubscribe = onSnapshot(collection(db, 'students'), (querySnapshot) => {
-      const studentsArr: Student[] = [];
-      querySnapshot.forEach((docSnapshot) => {
-        studentsArr.push({ ...docSnapshot.data(), id: docSnapshot.id } as Student);
-      });
-      setStudents(studentsArr);
+    const unsubscribe = onSnapshot(collection(db, 'students'), (snapshot) => {
+      const studentList: Student[] = snapshot.docs.map((docSnapshot) => ({
+        id: docSnapshot.id,
+        ...docSnapshot.data()
+      })) as Student[];
+      setStudents(studentList);
+      setLoading(false);
     });
 
     return () => unsubscribe();
   }, []);
 
-  const openModal = (student?: Student) => {
-    if (student) {
-      setEditingStudent(student);
-      setFormData({ name: student.name, email: student.email, nota: student.nota });
-    } else {
-      setEditingStudent(null);
-      setFormData({ name: '', email: '', nota: 0 });
-    }
-    setIsModalOpen(true);
+  const handleEdit = (student: Student) => {
+    setFormData({ name: student.name, email: student.email, age: student.age });
+    setEditingStudent(student);
+    setShowModal(true);
   };
 
-  const closeModal = () => {
-    setIsModalOpen(false);
+  const handleCreate = () => {
+    setFormData({ name: '', email: '', age: 0 });
     setEditingStudent(null);
-    setFormData({ name: '', email: '', nota: 0 });
+    setShowModal(true);
   };
 
-  const handleSave = async () => {
+  const handleDelete = async (id: string) => {
+    if (!confirm('Are you sure you want to delete this student?')) return;
+    try {
+      await deleteDoc(doc(db, 'students', id));
+    } catch (error) {
+      console.error('Error deleting student:', error);
+    }
+  };
+
+  const handleSubmit = async (e: FormEvent) => {
+    e.preventDefault();
+    if (!formData.name || !formData.email) return;
     try {
       if (editingStudent) {
         await updateDoc(doc(db, 'students', editingStudent.id), formData);
       } else {
         await addDoc(collection(db, 'students'), formData);
       }
-      closeModal();
+      setShowModal(false);
+      setEditingStudent(null);
+      setFormData({ name: '', email: '', age: 0 });
     } catch (error) {
       console.error('Error saving student:', error);
     }
   };
 
-  const deleteStudent = async (id: string) => {
-    if (confirm('Are you sure you want to delete this student?')) {
-      try {
-        await deleteDoc(doc(db, 'students', id));
-      } catch (error) {
-        console.error('Error deleting student:', error);
-      }
-    }
-  };
+  if (loading) {
+    return (
+      <div className="flex justify-center items-center h-64">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500"></div>
+      </div>
+    );
+  }
 
   return (
-    <div className="container mx-auto p-6">
+    <div className="container mx-auto px-6 py-8">
       <h1 className="text-3xl font-bold mb-6">Students</h1>
-      <button
-        onClick={() => openModal()}
-        className="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded mb-4 transition-colors"
-      >
-        Add Student
-      </button>
-      <div className="overflow-x-auto">
-        <table className="min-w-full bg-white border border-gray-300 shadow-md rounded-lg">
-          <thead className="bg-gray-50">
-            <tr>
-              <th className="py-3 px-6 text-left text-xs font-medium text-gray-500 uppercase tracking-wider border-b">ID</th>
-              <th className="py-3 px-6 text-left text-xs font-medium text-gray-500 uppercase tracking-wider border-b">Name</th>
-              <th className="py-3 px-6 text-left text-xs font-medium text-gray-500 uppercase tracking-wider border-b">Email</th>
-              <th className="py-3 px-6 text-left text-xs font-medium text-gray-500 uppercase tracking-wider border-b">Grade</th>
-              <th className="py-3 px-6 text-left text-xs font-medium text-gray-500 uppercase tracking-wider border-b">Actions</th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-gray-200">
-            {students.length === 0 ? (
+      <div className="flex justify-between items-center mb-6">
+        <div></div>
+        <button
+          onClick={handleCreate}
+          className="bg-blue-500 hover:bg-blue-600 text-white px-6 py-2 rounded-lg shadow-md transition duration-200"
+        >
+          + Create Student
+        </button>
+      </div>
+      <StudentFilter filters={filters} onFiltersChange={setFilters} />
+      {filteredStudents.length === 0 ? (
+        <div className="text-center py-12">
+          <p className="text-gray-500 text-lg">No students found matching the filters.</p>
+        </div>
+      ) : (
+        <div className="overflow-x-auto shadow-lg rounded-lg border border-gray-200">
+          <table className="min-w-full bg-white divide-y divide-gray-200">
+            <thead className="bg-gray-50">
               <tr>
-                <td colSpan={5} className="py-8 px-6 text-center text-gray-500">No students found.</td>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Name</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Email</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Age</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
               </tr>
-            ) : (
-              students.map((student) => (
+            </thead>
+            <tbody className="divide-y divide-gray-200">
+              {filteredStudents.map((student) => (
                 <tr key={student.id} className="hover:bg-gray-50">
-                  <td className="py-4 px-6 whitespace-nowrap text-sm font-medium text-gray-900 border-b">{student.id}</td>
-                  <td className="py-4 px-6 whitespace-nowrap text-sm text-gray-900 border-b">{student.name}</td>
-                  <td className="py-4 px-6 whitespace-nowrap text-sm text-gray-900 border-b">{student.email}</td>
-                  <td className="py-4 px-6 whitespace-nowrap text-sm text-gray-900 border-b">{student.nota}</td>
-                  <td className="py-4 px-6 whitespace-nowrap text-sm font-medium border-b">
+                  <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{student.name}</td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{student.email}</td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{student.age}</td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
                     <button
-                      onClick={() => openModal(student)}
-                      className="bg-green-500 hover:bg-green-600 text-white px-3 py-1 rounded text-xs mr-2 transition-colors"
+                      onClick={() => handleEdit(student)}
+                      className="bg-yellow-500 hover:bg-yellow-600 text-white px-4 py-1 rounded text-xs mr-2 transition duration-200"
                     >
                       Edit
                     </button>
                     <button
-                      onClick={() => deleteStudent(student.id)}
-                      className="bg-red-500 hover:bg-red-600 text-white px-3 py-1 rounded text-xs transition-colors"
+                      onClick={() => handleDelete(student.id)}
+                      className="bg-red-500 hover:bg-red-600 text-white px-4 py-1 rounded text-xs transition duration-200"
                     >
                       Delete
                     </button>
                   </td>
                 </tr>
-              ))
-            )}
-          </tbody>
-        </table>
-      </div>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
 
-      {/* Modal */}
-      {isModalOpen && (
+      {showModal && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
           <div className="bg-white p-8 rounded-lg shadow-2xl max-w-md w-full max-h-[90vh] overflow-y-auto">
-            <h2 className="text-2xl font-bold mb-6 text-gray-900">
-              {editingStudent ? 'Edit Student' : 'Add Student'}
+            <h2 className="text-2xl font-bold mb-6">
+              {editingStudent ? 'Edit Student' : 'Create Student'}
             </h2>
-            <div className="space-y-4 mb-6">
+            <form onSubmit={handleSubmit} className="space-y-4">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Name</label>
                 <input
                   type="text"
                   value={formData.name}
                   onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                  className="w-full p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                  placeholder="Enter name"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  required
                 />
               </div>
               <div>
@@ -160,38 +177,39 @@ const StudentsPage: React.FC = () => {
                   type="email"
                   value={formData.email}
                   onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                  className="w-full p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                  placeholder="Enter email"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  required
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Grade</label>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Age</label>
                 <input
                   type="number"
-                  step="0.1"
+                  value={formData.age}
+                  onChange={(e) => setFormData({ ...formData, age: parseInt(e.target.value) || 0 })}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                   min="0"
-                  max="10"
-                  value={formData.nota}
-                  onChange={(e) => setFormData({ ...formData, nota: parseFloat(e.target.value) || 0 })}
-                  className="w-full p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                  placeholder="Enter grade"
                 />
               </div>
-            </div>
-            <div className="flex justify-end space-x-3 pt-4 border-t">
-              <button
-                onClick={closeModal}
-                className="px-6 py-2 bg-gray-300 hover:bg-gray-400 text-gray-900 rounded-lg transition-colors"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={handleSave}
-                className="px-6 py-2 bg-blue-500 hover:bg-blue-600 text-white rounded-lg transition-colors"
-              >
-                Save
-              </button>
-            </div>
+              <div className="flex justify-end space-x-3 pt-4">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowModal(false);
+                    setEditingStudent(null);
+                  }}
+                  className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-200 hover:bg-gray-300 rounded-md transition duration-200"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className="px-4 py-2 text-sm font-medium text-white bg-green-600 hover:bg-green-700 rounded-md shadow-sm transition duration-200"
+                >
+                  Save Student
+                </button>
+              </div>
+            </form>
           </div>
         </div>
       )}

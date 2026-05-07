@@ -1,26 +1,26 @@
-import React from 'react';
+import React, { FC, Dispatch, SetStateAction } from 'react';
 
-type SortBy = 'nome' | 'email' | 'nota';
+type SortBy = 'name' | 'email' | 'grade';
 
 interface StudentFilterProps {
-  searchName: string;
-  setSearchName: (value: string) => void;
-  filterEmail: string;
-  setFilterEmail: (value: string) => void;
+  searchTerm: string;
+  setSearchTerm: Dispatch<SetStateAction<string>>;
+  emailFilter: string;
+  setEmailFilter: Dispatch<SetStateAction<string>>;
   minGrade: number;
-  setMinGrade: (value: number) => void;
+  setMinGrade: Dispatch<SetStateAction<number>>;
   maxGrade: number;
-  setMaxGrade: (value: number) => void;
+  setMaxGrade: Dispatch<SetStateAction<number>>;
   sortBy: SortBy;
-  setSortBy: (value: SortBy) => void;
+  setSortBy: Dispatch<SetStateAction<SortBy>>;
   clearFilters: () => void;
 }
 
-const StudentFilter: React.FC<StudentFilterProps> = ({
-  searchName,
-  setSearchName,
-  filterEmail,
-  setFilterEmail,
+export const StudentFilter: FC<StudentFilterProps> = ({
+  searchTerm,
+  setSearchTerm,
+  emailFilter,
+  setEmailFilter,
   minGrade,
   setMinGrade,
   maxGrade,
@@ -30,78 +30,88 @@ const StudentFilter: React.FC<StudentFilterProps> = ({
   clearFilters,
 }) => {
   return (
-    <div className="bg-white p-6 shadow-lg rounded-xl border border-gray-200">
-      <h3 className="text-xl font-bold mb-6 text-gray-800">Filtros de Alunos</h3>
+    <div className="bg-white p-6 rounded-lg shadow-md max-w-6xl mx-auto">
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-2">Busca por nome</label>
+          <label htmlFor="search" className="block text-sm font-medium text-gray-700 mb-2">
+            Buscar por nome
+          </label>
           <input
+            id="search"
             type="text"
-            value={searchName}
-            onChange={(e) => setSearchName(e.target.value)}
-            className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition"
-            placeholder="Digite o nome..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+            placeholder="Digite o nome do aluno..."
           />
         </div>
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-2">Filtro por email</label>
+          <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-2">
+            Filtro por email
+          </label>
           <input
+            id="email"
             type="email"
-            value={filterEmail}
-            onChange={(e) => setFilterEmail(e.target.value)}
-            className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition"
+            value={emailFilter}
+            onChange={(e) => setEmailFilter(e.target.value)}
+            className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
             placeholder="Digite o email..."
           />
         </div>
-        <div className="md:col-span-2 lg:col-span-1">
-          <label className="block text-sm font-medium text-gray-700 mb-2">Ordenação</label>
+        <div>
+          <label htmlFor="minGrade" className="block text-sm font-medium text-gray-700 mb-2">
+            Nota mínima
+          </label>
+          <input
+            id="minGrade"
+            type="number"
+            min="0"
+            max="100"
+            step="1"
+            value={minGrade}
+            onChange={(e) => setMinGrade(Number(e.target.value) || 0)}
+            className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+          />
+        </div>
+        <div>
+          <label htmlFor="maxGrade" className="block text-sm font-medium text-gray-700 mb-2">
+            Nota máxima
+          </label>
+          <input
+            id="maxGrade"
+            type="number"
+            min="0"
+            max="100"
+            step="1"
+            value={maxGrade}
+            onChange={(e) => setMaxGrade(Number(e.target.value) || 100)}
+            className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+          />
+        </div>
+        <div>
+          <label htmlFor="sort" className="block text-sm font-medium text-gray-700 mb-2">
+            Ordenar por
+          </label>
           <select
+            id="sort"
             value={sortBy}
             onChange={(e) => setSortBy(e.target.value as SortBy)}
-            className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition bg-white"
+            className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
           >
-            <option value="nome">Nome</option>
+            <option value="name">Nome</option>
             <option value="email">Email</option>
-            <option value="nota">Nota</option>
+            <option value="grade">Nota</option>
           </select>
         </div>
-      </div>
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 mt-6 pt-6 border-t border-gray-200">
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-2">Nota mínima</label>
-          <input
-            type="number"
-            min="0"
-            max="10"
-            step="0.1"
-            value={minGrade}
-            onChange={(e) => setMinGrade(parseFloat(e.target.value) || 0)}
-            className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition"
-          />
+        <div className="col-span-full md:col-span-2 lg:col-span-3 flex justify-center md:justify-end">
+          <button
+            onClick={clearFilters}
+            className="bg-red-600 hover:bg-red-700 text-white font-medium py-2 px-6 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2 transition duration-150 ease-in-out w-full md:w-auto"
+          >
+            Limpar filtros
+          </button>
         </div>
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-2">Nota máxima</label>
-          <input
-            type="number"
-            min="0"
-            max="10"
-            step="0.1"
-            value={maxGrade}
-            onChange={(e) => setMaxGrade(parseFloat(e.target.value) || 10)}
-            className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition"
-          />
-        </div>
-      </div>
-      <div className="mt-6 pt-6 border-t border-gray-200">
-        <button
-          onClick={clearFilters}
-          className="w-full sm:w-auto bg-red-500 hover:bg-red-600 text-white font-medium py-3 px-8 rounded-lg transition duration-200 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2 shadow-sm"
-        >
-          Limpar filtros
-        </button>
       </div>
     </div>
   );
 };
-
-export default StudentFilter;

@@ -6,6 +6,10 @@
     "module": "ESNext",
     "moduleResolution": "bundler",
     "types": ["vite/client"],
+    "baseUrl": ".",
+    "paths": {
+      "@/*": ["src/*"]
+    },
     "skipLibCheck": true,
     "esModuleInterop": true,
     "allowSyntheticDefaultImports": true,
